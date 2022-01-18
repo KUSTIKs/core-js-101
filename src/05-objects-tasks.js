@@ -6,7 +6,6 @@
  *                                                                                                *
  ************************************************************************************************ */
 
-
 /**
  * Returns the rectangle object with width and height parameters and getArea() method
  *
@@ -20,10 +19,15 @@
  *    console.log(r.height);      // => 20
  *    console.log(r.getArea());   // => 200
  */
-function Rectangle(/* width, height */) {
-  throw new Error('Not implemented');
+function Rectangle(width, height) {
+  return {
+    width,
+    height,
+    getArea() {
+      return this.width * this.height;
+    },
+  };
 }
-
 
 /**
  * Returns the JSON representation of specified object
@@ -35,10 +39,9 @@ function Rectangle(/* width, height */) {
  *    [1,2,3]   =>  '[1,2,3]'
  *    { width: 10, height : 20 } => '{"height":10,"width":20}'
  */
-function getJSON(/* obj */) {
-  throw new Error('Not implemented');
+function getJSON(obj) {
+  return JSON.stringify(obj);
 }
-
 
 /**
  * Returns the object of specified type from JSON representation
@@ -51,10 +54,11 @@ function getJSON(/* obj */) {
  *    const r = fromJSON(Circle.prototype, '{"radius":10}');
  *
  */
-function fromJSON(/* proto, json */) {
-  throw new Error('Not implemented');
+function fromJSON(proto, json) {
+  const obj = JSON.parse(json);
+  Object.setPrototypeOf(obj, proto);
+  return obj;
 }
-
 
 /**
  * Css selectors builder
@@ -110,36 +114,157 @@ function fromJSON(/* proto, json */) {
  *  For more examples see unit tests.
  */
 
+const SELECTOR_TYPE = Object.freeze({
+  ELEMENT: 'element',
+  ID: 'id',
+  CLASS: 'class',
+  ATTRIBUTE: 'attribute',
+  PSEUDO_CLASS: 'pseudo_class',
+  PSEUDO_ELEMENT: 'pseudo_element',
+});
+
+const selectorOrder = [
+  SELECTOR_TYPE.ELEMENT,
+  SELECTOR_TYPE.ID,
+  SELECTOR_TYPE.CLASS,
+  SELECTOR_TYPE.ATTRIBUTE,
+  SELECTOR_TYPE.PSEUDO_CLASS,
+  SELECTOR_TYPE.PSEUDO_ELEMENT,
+];
+
 const cssSelectorBuilder = {
-  element(/* value */) {
-    throw new Error('Not implemented');
+  parts: [],
+
+  element(value) {
+    const { ELEMENT } = SELECTOR_TYPE;
+
+    this.validateType(ELEMENT);
+    this.validateOccurrences(ELEMENT);
+
+    return this.getNewObjWithAddedPart({
+      type: ELEMENT,
+      value,
+      get formattedValue() {
+        return this.value;
+      },
+    });
   },
 
-  id(/* value */) {
-    throw new Error('Not implemented');
+  id(value) {
+    const { ID } = SELECTOR_TYPE;
+
+    this.validateType(ID);
+    this.validateOccurrences(ID);
+
+    return this.getNewObjWithAddedPart({
+      type: ID,
+      value,
+      get formattedValue() {
+        return `#${this.value}`;
+      },
+    });
   },
 
-  class(/* value */) {
-    throw new Error('Not implemented');
+  class(value) {
+    const { CLASS } = SELECTOR_TYPE;
+
+    this.validateType(CLASS);
+
+
+    return this.getNewObjWithAddedPart({
+      type: CLASS,
+      value,
+      get formattedValue() {
+        return `.${this.value}`;
+      },
+    });
   },
 
-  attr(/* value */) {
-    throw new Error('Not implemented');
+  attr(value) {
+    const { ATTRIBUTE } = SELECTOR_TYPE;
+
+    this.validateType(ATTRIBUTE);
+
+    return this.getNewObjWithAddedPart({
+      type: ATTRIBUTE,
+      value,
+      get formattedValue() {
+        return `[${this.value}]`;
+      },
+    });
   },
 
-  pseudoClass(/* value */) {
-    throw new Error('Not implemented');
+  pseudoClass(value) {
+    const { PSEUDO_CLASS } = SELECTOR_TYPE;
+
+    this.validateType(PSEUDO_CLASS);
+
+    return this.getNewObjWithAddedPart({
+      type: PSEUDO_CLASS,
+      value,
+      get formattedValue() {
+        return `:${this.value}`;
+      },
+    });
   },
 
-  pseudoElement(/* value */) {
-    throw new Error('Not implemented');
+  pseudoElement(value) {
+    const { PSEUDO_ELEMENT } = SELECTOR_TYPE;
+
+    this.validateType(PSEUDO_ELEMENT);
+    this.validateOccurrences(PSEUDO_ELEMENT);
+
+    return this.getNewObjWithAddedPart({
+      type: PSEUDO_ELEMENT,
+      value,
+      get formattedValue() {
+        return `::${this.value}`;
+      },
+    });
   },
 
-  combine(/* selector1, combinator, selector2 */) {
-    throw new Error('Not implemented');
+  combine(selector1, combinator, selector2) {
+    return {
+      ...this,
+      chunks: [selector1.stringify(), combinator, selector2.stringify()],
+    };
+  },
+
+  stringify() {
+    if (this.chunks) {
+      return this.chunks.join(' ');
+    }
+    return this.parts.map((part) => part.formattedValue).join('');
+  },
+
+  getNewObjWithAddedPart(part) {
+    return {
+      ...this,
+      parts: this.parts.concat(part),
+    };
+  },
+
+  validateType(type) {
+    const { parts } = this;
+    const lastPart = parts[parts.length - 1];
+    if (
+      lastPart
+      && selectorOrder.indexOf(lastPart.type) > selectorOrder.indexOf(type)
+    ) {
+      throw new Error(
+        'Selector parts should be arranged in the following order: element, id, class, attribute, pseudo-class, pseudo-element',
+      );
+    }
+  },
+
+  validateOccurrences(type) {
+    if (this.parts.some((obj) => obj.type === type)) {
+      throw new Error(
+        'Element, id and pseudo-element should not occur more then one time inside the selector',
+      );
+    }
   },
 };
-
 
 module.exports = {
   Rectangle,
